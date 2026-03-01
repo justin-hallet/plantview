@@ -44,7 +44,7 @@ async function fetchUnsplashImage(
   if (!accessKey) return null;
 
   const params = new URLSearchParams({
-    query: `${plantName} mature plant`,
+    query: `${plantName} full plant tree potted`,
     per_page: "1",
     orientation: "squarish",
   });
