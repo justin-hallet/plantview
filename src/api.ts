@@ -1,5 +1,6 @@
 import type { PlantData, PlantResult } from "./types";
 import { buildPlantPrompt } from "./prompt";
+import { getCachedResult, setCachedResult } from "./cache";
 
 const OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions";
 const UNSPLASH_URL = "https://api.unsplash.com/search/photos";
@@ -66,11 +67,13 @@ export async function fetchPlantImage(
 }
 
 export async function lookupPlant(query: string): Promise<PlantResult> {
-  const plant = await fetchPlantData(query);
+  const cached = await getCachedResult(query);
+  if (cached) return cached;
 
+  const plant = await fetchPlantData(query);
   const image = await fetchPlantImage(plant.common_name);
 
-  return {
+  const result: PlantResult = {
     plant,
     imageUrl: image?.url ?? null,
     imageAttribution: image
@@ -81,4 +84,7 @@ export async function lookupPlant(query: string): Promise<PlantResult> {
         }
       : null,
   };
+
+  await setCachedResult(query, result);
+  return result;
 }
