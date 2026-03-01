@@ -1,5 +1,5 @@
-import type { PlantData, PlantResult, ImageAttribution } from "./types";
-import { buildPlantPrompt } from "./prompt";
+import type { PlantData, PlantResult, PlantEntry, ImageAttribution } from "./types";
+import { buildPlantPrompt, buildExtractPlantsPrompt } from "./prompt";
 import { getCachedResult, setCachedResult } from "./cache";
 
 const OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions";
@@ -122,6 +122,36 @@ export async function fetchPlantImage(
   if (wikiCommon) return wikiCommon;
 
   return null;
+}
+
+export async function extractPlantsFromText(documentText: string): Promise<PlantEntry[]> {
+  const apiKey = import.meta.env.VITE_OPENROUTER_API_KEY;
+  if (!apiKey) throw new Error("Missing VITE_OPENROUTER_API_KEY environment variable");
+
+  const response = await fetch(OPENROUTER_URL, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${apiKey}`,
+      "HTTP-Referer": window.location.origin,
+      "X-OpenRouter-Title": "PlantView",
+    },
+    body: JSON.stringify({
+      model: "openai/gpt-4o-mini",
+      messages: [{ role: "user", content: buildExtractPlantsPrompt(documentText) }],
+    }),
+  });
+
+  if (!response.ok) {
+    throw new Error(`OpenRouter API error: ${response.status} ${response.statusText}`);
+  }
+
+  const data = await response.json();
+  const content = data.choices?.[0]?.message?.content;
+  if (!content) throw new Error("No content in LLM response");
+
+  const jsonStr = content.replace(/^```json?\n?/gm, "").replace(/\n?```$/gm, "").trim();
+  return JSON.parse(jsonStr) as PlantEntry[];
 }
 
 export async function lookupPlant(query: string): Promise<PlantResult> {

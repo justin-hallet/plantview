@@ -1,3 +1,23 @@
+export function buildExtractPlantsPrompt(documentText: string): string {
+  return `You are a horticultural data assistant. Extract all unique plant names and their pot/container sizes from this document. Return ONLY valid JSON, no markdown, no explanation.
+
+Return a JSON array matching this schema:
+[
+  { "name": "Plant Name or cultivar", "potSize": "size string or null" }
+]
+
+Rules:
+- Extract every plant mentioned in the document
+- Deduplicate: if the same plant appears multiple times, include it only once
+- For potSize, include whatever size info is given (e.g. "200mm", "100L", "300mm", "45L") or null if not specified
+- Keep cultivar names (e.g. "Magnolia 'Little Gem'" not just "Magnolia")
+- If the document is a table/CSV, look for name and size columns
+- Ignore non-plant content (headers, notes, addresses, quantities, spacing info)
+
+Document content:
+${documentText}`;
+}
+
 export function buildPlantPrompt(query: string): string {
   return `You are a horticultural data assistant. Given a plant query, return ONLY valid JSON matching the schema below. No markdown, no explanation, just JSON.
 

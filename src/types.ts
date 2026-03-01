@@ -30,3 +30,8 @@ export interface PlantResult {
   imageUrl: string | null;
   imageAttribution: ImageAttribution | null;
 }
+
+export interface PlantEntry {
+  name: string;
+  potSize?: string;
+}
