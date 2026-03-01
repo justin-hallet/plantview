@@ -50,14 +50,25 @@ export function PlantCard({ result }: PlantCardProps) {
 
       {imageAttribution && (
         <div className="px-5 pb-3 text-xs text-gray-400">
-          Photo by{" "}
-          <a href={imageAttribution.photographerUrl} className="underline" target="_blank" rel="noopener noreferrer">
-            {imageAttribution.photographerName}
-          </a>{" "}
-          on{" "}
-          <a href={imageAttribution.unsplashUrl} className="underline" target="_blank" rel="noopener noreferrer">
-            Unsplash
-          </a>
+          {imageAttribution.source === "unsplash" ? (
+            <>
+              Photo by{" "}
+              <a href={imageAttribution.photographerUrl} className="underline" target="_blank" rel="noopener noreferrer">
+                {imageAttribution.photographerName}
+              </a>{" "}
+              on{" "}
+              <a href={imageAttribution.sourceUrl} className="underline" target="_blank" rel="noopener noreferrer">
+                Unsplash
+              </a>
+            </>
+          ) : (
+            <>
+              Image from{" "}
+              <a href={imageAttribution.sourceUrl} className="underline" target="_blank" rel="noopener noreferrer">
+                Wikipedia
+              </a>
+            </>
+          )}
         </div>
       )}
     </div>

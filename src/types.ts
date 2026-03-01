@@ -18,12 +18,15 @@ export interface PlantData {
   confidence: "HIGH" | "MEDIUM" | "LOW";
 }
 
+export interface ImageAttribution {
+  source: "unsplash" | "wikipedia";
+  photographerName?: string;
+  photographerUrl?: string;
+  sourceUrl: string;
+}
+
 export interface PlantResult {
   plant: PlantData;
   imageUrl: string | null;
-  imageAttribution: {
-    photographerName: string;
-    photographerUrl: string;
-    unsplashUrl: string;
-  } | null;
+  imageAttribution: ImageAttribution | null;
 }
