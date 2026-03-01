@@ -1,6 +1,6 @@
 import type { PlantData, PlantResult, PlantEntry, ImageAttribution } from "./types";
 import { buildPlantPrompt, buildExtractPlantsPrompt } from "./prompt";
-import { getCachedResult, setCachedResult } from "./cache";
+import { getCachedResult, setCachedResult, batchGetCached } from "./cache";
 
 const OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions";
 const UNSPLASH_URL = "https://api.unsplash.com/search/photos";
@@ -169,4 +169,51 @@ export async function lookupPlant(query: string): Promise<PlantResult> {
 
   await setCachedResult(query, result);
   return result;
+}
+
+export async function lookupPlantBatch(
+  entries: PlantEntry[],
+  onResult: (index: number, result: PlantResult) => void,
+  onError: (index: number, error: string) => void
+): Promise<void> {
+  const queries = entries.map((entry) =>
+    entry.potSize ? `${entry.name} ${entry.potSize}` : entry.name
+  );
+
+  // Pre-check cache for all entries
+  const cached = await batchGetCached(queries);
+
+  // Fire cached results immediately
+  const uncached: { index: number; query: string }[] = [];
+  for (let i = 0; i < queries.length; i++) {
+    const result = cached.get(queries[i]);
+    if (result) {
+      onResult(i, result);
+    } else {
+      uncached.push({ index: i, query: queries[i] });
+    }
+  }
+
+  // Process uncached entries with concurrency limit of 3
+  const CONCURRENCY = 3;
+  let next = 0;
+
+  async function worker(): Promise<void> {
+    while (next < uncached.length) {
+      const current = next++;
+      const { index, query } = uncached[current];
+      try {
+        const result = await lookupPlant(query);
+        onResult(index, result);
+      } catch (err) {
+        onError(index, err instanceof Error ? err.message : "Lookup failed");
+      }
+    }
+  }
+
+  const workers = Array.from(
+    { length: Math.min(CONCURRENCY, uncached.length) },
+    () => worker()
+  );
+  await Promise.all(workers);
 }

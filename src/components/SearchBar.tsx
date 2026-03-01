@@ -3,10 +3,12 @@ import { useState, useRef } from "react";
 interface SearchBarProps {
   onSearch: (query: string) => void;
   onFileSelected: (file: File) => void;
+  onExport?: () => void;
   isLoading: boolean;
+  showExport?: boolean;
 }
 
-export function SearchBar({ onSearch, onFileSelected, isLoading }: SearchBarProps) {
+export function SearchBar({ onSearch, onFileSelected, onExport, isLoading, showExport }: SearchBarProps) {
   const [query, setQuery] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -60,6 +62,15 @@ export function SearchBar({ onSearch, onFileSelected, isLoading }: SearchBarProp
       >
         {isLoading ? "Looking up..." : "Go"}
       </button>
+      {showExport && (
+        <button
+          type="button"
+          onClick={onExport}
+          className="no-print px-4 py-3 bg-gray-600 text-white font-semibold rounded-lg hover:bg-gray-700 transition-colors"
+        >
+          Export PDF
+        </button>
+      )}
     </form>
   );
 }

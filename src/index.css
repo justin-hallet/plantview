@@ -1,3 +1,35 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+@media print {
+  /* Hide interactive UI and non-content elements */
+  form,
+  .no-print,
+  .animate-pulse {
+    display: none !important;
+  }
+
+  /* Clean background for paper */
+  body,
+  .min-h-screen {
+    background: white !important;
+    padding: 0 !important;
+  }
+
+  /* Prevent cards from splitting across pages */
+  .print-avoid-break {
+    break-inside: avoid;
+  }
+
+  /* Keep section headings with their content */
+  h2 {
+    break-after: avoid;
+  }
+
+  /* Remove shadows for cleaner print */
+  .shadow-md {
+    box-shadow: none !important;
+    border: 1px solid #e5e7eb;
+  }
+}

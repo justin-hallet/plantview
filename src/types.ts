@@ -34,4 +34,12 @@ export interface PlantResult {
 export interface PlantEntry {
   name: string;
   potSize?: string;
+  qty?: number;
+  notes?: string;
+  section?: string;
 }
+
+export type PlantListItem =
+  | { status: "pending"; entry: PlantEntry }
+  | { status: "loaded"; entry: PlantEntry; result: PlantResult }
+  | { status: "error"; entry: PlantEntry; error: string };

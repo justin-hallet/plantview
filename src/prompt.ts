@@ -1,18 +1,20 @@
 export function buildExtractPlantsPrompt(documentText: string): string {
-  return `You are a horticultural data assistant. Extract all unique plant names and their pot/container sizes from this document. Return ONLY valid JSON, no markdown, no explanation.
+  return `You are a horticultural data assistant. Extract all unique plant names and their details from this document. Return ONLY valid JSON, no markdown, no explanation.
 
 Return a JSON array matching this schema:
 [
-  { "name": "Plant Name or cultivar", "potSize": "size string or null" }
+  { "name": "Plant Name or cultivar", "potSize": "size string or null", "qty": number or null, "notes": "string or null", "section": "string or null" }
 ]
 
 Rules:
 - Extract every plant mentioned in the document
-- Deduplicate: if the same plant appears multiple times, include it only once
+- Deduplicate: if the same plant appears multiple times with the same size and section, include it only once (sum quantities)
 - For potSize, include whatever size info is given (e.g. "200mm", "100L", "300mm", "45L") or null if not specified
+- For qty, include the quantity/count if given, or null if not specified
+- For notes, include any landscaper notes verbatim (e.g. spacing like "800mm centres", purpose like "feature", "accent", "screening", grouping like "3+3+3", placement notes). Set to null if no notes
+- For section, include the garden area or section heading the plant appears under (e.g. "Eastern garden next to house", "Main gardens - top of wall WEST"). Set to null if no sections in document
 - Keep cultivar names (e.g. "Magnolia 'Little Gem'" not just "Magnolia")
-- If the document is a table/CSV, look for name and size columns
-- Ignore non-plant content (headers, notes, addresses, quantities, spacing info)
+- If the document is a table/CSV, look for name, size, quantity, and notes columns
 
 Document content:
 ${documentText}`;

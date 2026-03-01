@@ -14,3 +14,19 @@ export async function setCachedResult(query: string, result: PlantResult): Promi
   const key = `plant:${normalizeKey(query)}`;
   await set(key, result);
 }
+
+export async function batchGetCached(
+  queries: string[]
+): Promise<Map<string, PlantResult>> {
+  const results = await Promise.all(
+    queries.map(async (query) => {
+      const result = await getCachedResult(query);
+      return [query, result] as const;
+    })
+  );
+  const map = new Map<string, PlantResult>();
+  for (const [query, result] of results) {
+    if (result) map.set(query, result);
+  }
+  return map;
+}

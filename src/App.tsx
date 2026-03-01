@@ -2,21 +2,24 @@ import { useState } from "react";
 import { SearchBar } from "./components/SearchBar";
 import { PlantCard } from "./components/PlantCard";
 import { PlantList } from "./components/PlantList";
-import { lookupPlant, extractPlantsFromText } from "./api";
+import { lookupPlant, extractPlantsFromText, lookupPlantBatch } from "./api";
 import { extractTextFromFile } from "./fileParser";
-import type { PlantResult } from "./types";
+import type { PlantResult, PlantListItem } from "./types";
 
 function App() {
   const [result, setResult] = useState<PlantResult | null>(null);
-  const [batchResults, setBatchResults] = useState<PlantResult[]>([]);
-  const [batchTotal, setBatchTotal] = useState(0);
+  const [batchItems, setBatchItems] = useState<PlantListItem[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [mode, setMode] = useState<"single" | "batch">("single");
 
+  const hasResults =
+    (mode === "single" && result && !isLoading) ||
+    (mode === "batch" && batchItems.some((item) => item.status === "loaded"));
+
   async function handleSearch(query: string) {
     setMode("single");
-    setBatchResults([]);
+    setBatchItems([]);
     setIsLoading(true);
     setError(null);
     try {
@@ -33,7 +36,7 @@ function App() {
   async function handleFileSelected(file: File) {
     setMode("batch");
     setResult(null);
-    setBatchResults([]);
+    setBatchItems([]);
     setIsLoading(true);
     setError(null);
 
@@ -47,19 +50,27 @@ function App() {
         return;
       }
 
-      setBatchTotal(entries.length);
+      // Show placeholders immediately
+      setBatchItems(entries.map((entry) => ({ status: "pending", entry })));
 
-      for (const entry of entries) {
-        try {
-          const query = entry.potSize
-            ? `${entry.name} ${entry.potSize}`
-            : entry.name;
-          const plantResult = await lookupPlant(query);
-          setBatchResults((prev) => [...prev, plantResult]);
-        } catch {
-          // Skip plants that fail to look up
+      // Look up all plants concurrently with progressive updates
+      await lookupPlantBatch(
+        entries,
+        (index, plantResult) => {
+          setBatchItems((prev) => {
+            const next = [...prev];
+            next[index] = { status: "loaded", entry: entries[index], result: plantResult };
+            return next;
+          });
+        },
+        (index, errorMsg) => {
+          setBatchItems((prev) => {
+            const next = [...prev];
+            next[index] = { status: "error", entry: entries[index], error: errorMsg };
+            return next;
+          });
         }
-      }
+      );
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to process file");
     } finally {
@@ -71,7 +82,13 @@ function App() {
     <div className="min-h-screen bg-gray-50 px-4 py-8">
       <h1 className="text-3xl font-bold text-center text-green-800 mb-6">PlantView</h1>
 
-      <SearchBar onSearch={handleSearch} onFileSelected={handleFileSelected} isLoading={isLoading} />
+      <SearchBar
+        onSearch={handleSearch}
+        onFileSelected={handleFileSelected}
+        onExport={() => window.print()}
+        isLoading={isLoading}
+        showExport={!!hasResults}
+      />
 
       <div className="mt-8">
         {error && (
@@ -88,8 +105,8 @@ function App() {
 
         {mode === "single" && result && !isLoading && <PlantCard result={result} />}
 
-        {mode === "batch" && (batchResults.length > 0 || isLoading) && (
-          <PlantList results={batchResults} total={batchTotal} isLoading={isLoading} />
+        {mode === "batch" && batchItems.length > 0 && (
+          <PlantList items={batchItems} isLoading={isLoading} />
         )}
       </div>
     </div>
