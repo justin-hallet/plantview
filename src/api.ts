@@ -70,11 +70,18 @@ async function fetchUnsplashImage(
   };
 }
 
+function stripCultivar(name: string): string {
+  // Remove cultivar names in single quotes, e.g. "Magnolia grandiflora 'Little Gem'" -> "Magnolia grandiflora"
+  return name.replace(/\s*'[^']*'$/g, "").replace(/\s*"[^"]*"$/g, "").trim();
+}
+
 async function fetchWikipediaImage(
   plantName: string
 ): Promise<{ url: string; attribution: ImageAttribution } | null> {
-  // Try scientific name first, then common name
-  for (const name of [plantName]) {
+  // Try exact name first, then without cultivar
+  const stripped = stripCultivar(plantName);
+  const candidates = stripped !== plantName ? [plantName, stripped] : [plantName];
+  for (const name of candidates) {
     const encoded = encodeURIComponent(name);
     try {
       const response = await fetch(`${WIKIPEDIA_API_URL}/${encoded}`);
@@ -102,15 +109,15 @@ export async function fetchPlantImage(
   commonName: string,
   scientificName: string
 ): Promise<{ url: string; attribution: ImageAttribution } | null> {
-  // Try Unsplash first
+  // Try Unsplash first (with cultivar name for specificity)
   const unsplash = await fetchUnsplashImage(commonName);
   if (unsplash) return unsplash;
 
-  // Fall back to Wikipedia using scientific name (better match)
+  // Fall back to Wikipedia using scientific name (tries with and without cultivar)
   const wikiScientific = await fetchWikipediaImage(scientificName);
   if (wikiScientific) return wikiScientific;
 
-  // Try Wikipedia with common name
+  // Try Wikipedia with common name (tries with and without cultivar)
   const wikiCommon = await fetchWikipediaImage(commonName);
   if (wikiCommon) return wikiCommon;
 
