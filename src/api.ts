@@ -3,8 +3,9 @@ import { buildPlantPrompt, buildExtractPlantsPrompt } from "./prompt";
 import { getCachedResult, setCachedResult, batchGetCached } from "./cache";
 
 const OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions";
-const UNSPLASH_URL = "https://api.unsplash.com/search/photos";
 const WIKIPEDIA_API_URL = "https://en.wikipedia.org/api/rest_v1/page/summary";
+const ALA_SPECIES_SEARCH_URL = "https://api.ala.org.au/species/search";
+const ALA_IMAGE_DETAILS_URL = "https://images.ala.org.au/ws/image/details";
 
 export async function fetchPlantData(query: string, apiKey: string): Promise<PlantData> {
   const response = await fetch(OPENROUTER_URL, {
@@ -32,39 +33,6 @@ export async function fetchPlantData(query: string, apiKey: string): Promise<Pla
   // Strip markdown code fences if present
   const jsonStr = content.replace(/^```json?\n?/gm, "").replace(/\n?```$/gm, "").trim();
   return JSON.parse(jsonStr) as PlantData;
-}
-
-async function fetchUnsplashImage(
-  plantName: string
-): Promise<{ url: string; attribution: ImageAttribution } | null> {
-  const accessKey = import.meta.env.VITE_UNSPLASH_ACCESS_KEY;
-  if (!accessKey) return null;
-
-  const params = new URLSearchParams({
-    query: `${plantName} full plant tree potted`,
-    per_page: "1",
-    orientation: "squarish",
-  });
-
-  const response = await fetch(`${UNSPLASH_URL}?${params}`, {
-    headers: { Authorization: `Client-ID ${accessKey}` },
-  });
-
-  if (!response.ok) return null;
-
-  const data = await response.json();
-  const photo = data.results?.[0];
-  if (!photo) return null;
-
-  return {
-    url: photo.urls.regular,
-    attribution: {
-      source: "unsplash",
-      photographerName: photo.user.name,
-      photographerUrl: photo.user.links.html,
-      sourceUrl: photo.links.html,
-    },
-  };
 }
 
 function stripCultivar(name: string): string {
@@ -102,13 +70,66 @@ async function fetchWikipediaImage(
   return null;
 }
 
+async function fetchAlaImage(
+  scientificName: string
+): Promise<{ url: string; attribution: ImageAttribution } | null> {
+  const stripped = stripCultivar(scientificName);
+  const candidates = stripped !== scientificName ? [scientificName, stripped] : [scientificName];
+
+  for (const name of candidates) {
+    const params = new URLSearchParams({
+      q: name,
+      fq: "idxtype:TAXON",
+      pageSize: "1",
+    });
+
+    try {
+      const response = await fetch(`${ALA_SPECIES_SEARCH_URL}?${params}`);
+      if (!response.ok) continue;
+
+      const data = await response.json();
+      const result = data.searchResults?.results?.[0];
+      if (!result?.largeImageUrl || !result?.image) continue;
+
+      // Fetch image details for attribution
+      let creator: string | undefined;
+      let license: string | undefined;
+      try {
+        const detailsResponse = await fetch(
+          `${ALA_IMAGE_DETAILS_URL}?id=${result.image}`
+        );
+        if (detailsResponse.ok) {
+          const details = await detailsResponse.json();
+          creator = details.creator || undefined;
+          license = details.recognisedLicence?.acronym || undefined;
+        }
+      } catch {
+        // Attribution is best-effort; continue without it
+      }
+
+      return {
+        url: result.largeImageUrl,
+        attribution: {
+          source: "ala",
+          photographerName: creator,
+          sourceUrl: `https://bie.ala.org.au/species/${encodeURIComponent(result.guid)}`,
+          license,
+        },
+      };
+    } catch {
+      continue;
+    }
+  }
+  return null;
+}
+
 export async function fetchPlantImage(
   commonName: string,
   scientificName: string
 ): Promise<{ url: string; attribution: ImageAttribution } | null> {
-  // Try Unsplash first (with cultivar name for specificity)
-  const unsplash = await fetchUnsplashImage(commonName);
-  if (unsplash) return unsplash;
+  // Try ALA first with scientific name (tries with and without cultivar)
+  const ala = await fetchAlaImage(scientificName);
+  if (ala) return ala;
 
   // Fall back to Wikipedia using scientific name (tries with and without cultivar)
   const wikiScientific = await fetchWikipediaImage(scientificName);
