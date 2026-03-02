@@ -1,4 +1,4 @@
-import { get, set } from "idb-keyval";
+import { get, set, del } from "idb-keyval";
 import type { PlantResult } from "./types";
 
 function normalizeKey(query: string): string {
@@ -29,4 +29,18 @@ export async function batchGetCached(
     if (result) map.set(query, result);
   }
   return map;
+}
+
+const API_KEY_STORE_KEY = "openrouter-api-key";
+
+export async function getStoredApiKey(): Promise<string | undefined> {
+  return get<string>(API_KEY_STORE_KEY);
+}
+
+export async function setStoredApiKey(key: string): Promise<void> {
+  await set(API_KEY_STORE_KEY, key);
+}
+
+export async function deleteStoredApiKey(): Promise<void> {
+  await del(API_KEY_STORE_KEY);
 }
