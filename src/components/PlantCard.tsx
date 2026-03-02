@@ -124,16 +124,17 @@ function PlantCardLoaded({ result, entry }: PlantCardLoadedProps) {
       <div className="px-5 pb-3 text-xs text-gray-400 flex justify-between">
         <span>
           {imageAttribution && (
-            imageAttribution.source === "unsplash" ? (
+            imageAttribution.source === "ala" ? (
               <>
-                Photo by{" "}
-                <a href={imageAttribution.photographerUrl} className="underline" target="_blank" rel="noopener noreferrer">
-                  {imageAttribution.photographerName}
-                </a>{" "}
-                on{" "}
+                {imageAttribution.photographerName && (
+                  <>Photo by {imageAttribution.photographerName} on{" "}</>
+                )}
                 <a href={imageAttribution.sourceUrl} className="underline" target="_blank" rel="noopener noreferrer">
-                  Unsplash
+                  Atlas of Living Australia
                 </a>
+                {imageAttribution.license && (
+                  <> ({imageAttribution.license})</>
+                )}
               </>
             ) : (
               <>
