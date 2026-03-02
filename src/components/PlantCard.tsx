@@ -122,21 +122,11 @@ function PlantCardLoaded({ result, entry }: PlantCardLoadedProps) {
       </div>
 
       <div className="px-5 pb-3 text-xs text-gray-400 flex justify-between">
-        <span>
-          {imageAttribution && (
-            <>
-              {imageAttribution.photographerName && (
-                <>{imageAttribution.photographerName} · </>
-              )}
-              <a href={imageAttribution.sourceUrl} className="underline" target="_blank" rel="noopener noreferrer">
-                {imageAttribution.source === "inaturalist" ? "iNaturalist" : "Wikimedia Commons"}
-              </a>
-              {imageAttribution.license && (
-                <> ({imageAttribution.license})</>
-              )}
-            </>
-          )}
-        </span>
+        {imageAttribution ? (
+          <a href={imageAttribution.sourceUrl} className="underline" target="_blank" rel="noopener noreferrer">
+            {imageAttribution.source === "inaturalist" ? "iNaturalist" : "Wikimedia Commons"}
+          </a>
+        ) : <span />}
         <a
           href={`https://en.wikipedia.org/wiki/${encodeURIComponent(plant.scientific_name)}`}
           className="underline"
@@ -144,6 +134,14 @@ function PlantCardLoaded({ result, entry }: PlantCardLoadedProps) {
           rel="noopener noreferrer"
         >
           Wikipedia
+        </a>
+        <a
+          href={`https://www.google.com/search?tbm=isch&q=${encodeURIComponent(plant.scientific_name)}`}
+          className="underline"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          Google Images
         </a>
       </div>
     </div>
