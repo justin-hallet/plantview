@@ -160,6 +160,12 @@ function App() {
 
         {mode === "single" && result && !isLoading && <PlantCard result={result} />}
 
+        {mode === "batch" && isLoading && batchItems.length === 0 && (
+          <div className="text-center text-gray-500">
+            <div className="animate-pulse text-lg">Reading document and extracting plants...</div>
+          </div>
+        )}
+
         {mode === "batch" && batchItems.length > 0 && (
           <PlantList items={batchItems} isLoading={isLoading} />
         )}
