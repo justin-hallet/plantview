@@ -19,9 +19,8 @@ export interface PlantData {
 }
 
 export interface ImageAttribution {
-  source: "ala" | "wikipedia";
+  source: "inaturalist" | "wikimedia";
   photographerName?: string;
-  photographerUrl?: string;
   sourceUrl: string;
   license?: string;
 }

@@ -3,9 +3,8 @@ import { buildPlantPrompt, buildExtractPlantsPrompt } from "./prompt";
 import { getCachedResult, setCachedResult, batchGetCached } from "./cache";
 
 const OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions";
-const WIKIPEDIA_API_URL = "https://en.wikipedia.org/api/rest_v1/page/summary";
-const ALA_SPECIES_SEARCH_URL = "https://api.ala.org.au/species/search";
-const ALA_IMAGE_URL = "https://images.ala.org.au/ws/image";
+const INATURALIST_TAXA_URL = "https://api.inaturalist.org/v1/taxa";
+const WIKIMEDIA_API_URL = "https://commons.wikimedia.org/w/api.php";
 
 export async function fetchPlantData(query: string, apiKey: string): Promise<PlantData> {
   const response = await fetch(OPENROUTER_URL, {
@@ -40,27 +39,39 @@ function stripCultivar(name: string): string {
   return name.replace(/\s*'[^']*'$/g, "").replace(/\s*"[^"]*"$/g, "").trim();
 }
 
-async function fetchWikipediaImage(
-  plantName: string
+async function fetchINaturalistImage(
+  scientificName: string
 ): Promise<{ url: string; attribution: ImageAttribution } | null> {
-  // Try exact name first, then without cultivar
-  const stripped = stripCultivar(plantName);
-  const candidates = stripped !== plantName ? [plantName, stripped] : [plantName];
+  const stripped = stripCultivar(scientificName);
+  const candidates = stripped !== scientificName ? [scientificName, stripped] : [scientificName];
+
   for (const name of candidates) {
-    const encoded = encodeURIComponent(name);
     try {
-      const response = await fetch(`${WIKIPEDIA_API_URL}/${encoded}`);
+      const params = new URLSearchParams({
+        q: name,
+        rank: "species",
+        per_page: "1",
+      });
+      const response = await fetch(`${INATURALIST_TAXA_URL}?${params}`, {
+        headers: { "X-Via": "PlantView" },
+      });
       if (!response.ok) continue;
 
       const data = await response.json();
-      const imageUrl = data.originalimage?.source ?? data.thumbnail?.source;
-      if (!imageUrl) continue;
+      const taxon = data.results?.[0];
+      const photo = taxon?.default_photo;
+      if (!photo?.medium_url) continue;
+
+      // Use large size (1024px) instead of medium (500px)
+      const imageUrl = photo.medium_url.replace("/medium.", "/large.");
 
       return {
         url: imageUrl,
         attribution: {
-          source: "wikipedia",
-          sourceUrl: data.content_urls?.desktop?.page ?? `https://en.wikipedia.org/wiki/${encoded}`,
+          source: "inaturalist",
+          photographerName: photo.attribution || undefined,
+          sourceUrl: `https://www.inaturalist.org/taxa/${taxon.id}`,
+          license: photo.license_code || undefined,
         },
       };
     } catch {
@@ -70,49 +81,49 @@ async function fetchWikipediaImage(
   return null;
 }
 
-async function fetchAlaImage(
-  scientificName: string
+async function fetchWikimediaImage(
+  searchTerm: string
 ): Promise<{ url: string; attribution: ImageAttribution } | null> {
-  const stripped = stripCultivar(scientificName);
-  const candidates = stripped !== scientificName ? [scientificName, stripped] : [scientificName];
+  const stripped = stripCultivar(searchTerm);
+  const candidates = stripped !== searchTerm ? [searchTerm, stripped] : [searchTerm];
 
   for (const name of candidates) {
-    const params = new URLSearchParams({
-      q: name,
-      fq: "idxtype:TAXON",
-      pageSize: "1",
-    });
-
     try {
-      const response = await fetch(`${ALA_SPECIES_SEARCH_URL}?${params}`);
+      const params = new URLSearchParams({
+        action: "query",
+        generator: "search",
+        gsrsearch: `${name} plant`,
+        gsrnamespace: "6",
+        gsrlimit: "1",
+        prop: "imageinfo",
+        iiprop: "url|extmetadata",
+        iiurlwidth: "800",
+        format: "json",
+        origin: "*",
+      });
+      const response = await fetch(`${WIKIMEDIA_API_URL}?${params}`);
       if (!response.ok) continue;
 
       const data = await response.json();
-      const result = data.searchResults?.results?.[0];
-      if (!result?.largeImageUrl || !result?.image) continue;
+      const pages = data.query?.pages;
+      if (!pages) continue;
 
-      // Fetch image details for attribution
-      let creator: string | undefined;
-      let license: string | undefined;
-      try {
-        const detailsResponse = await fetch(
-          `${ALA_IMAGE_URL}/${result.image}`
-        );
-        if (detailsResponse.ok) {
-          const details = await detailsResponse.json();
-          creator = details.creator || undefined;
-          license = details.recognisedLicence?.acronym || undefined;
-        }
-      } catch {
-        // Attribution is best-effort; continue without it
-      }
+      const page = Object.values(pages)[0] as { imageinfo?: Array<{ thumburl?: string; url?: string; extmetadata?: Record<string, { value?: string }> }> };
+      const info = page.imageinfo?.[0];
+      if (!info?.thumburl) continue;
+
+      const meta = info.extmetadata ?? {};
+      // Strip HTML tags from artist name
+      const rawArtist = meta.Artist?.value ?? "";
+      const artist = rawArtist.replace(/<[^>]*>/g, "").trim() || undefined;
+      const license = meta.LicenseShortName?.value || undefined;
 
       return {
-        url: result.largeImageUrl,
+        url: info.thumburl,
         attribution: {
-          source: "ala",
-          photographerName: creator,
-          sourceUrl: `https://bie.ala.org.au/species/${encodeURIComponent(result.guid)}`,
+          source: "wikimedia",
+          photographerName: artist,
+          sourceUrl: info.url ?? "",
           license,
         },
       };
@@ -127,16 +138,16 @@ export async function fetchPlantImage(
   commonName: string,
   scientificName: string
 ): Promise<{ url: string; attribution: ImageAttribution } | null> {
-  // Try ALA first with scientific name (tries with and without cultivar)
-  const ala = await fetchAlaImage(scientificName);
-  if (ala) return ala;
+  // Try iNaturalist first with scientific name
+  const inat = await fetchINaturalistImage(scientificName);
+  if (inat) return inat;
 
-  // Fall back to Wikipedia using scientific name (tries with and without cultivar)
-  const wikiScientific = await fetchWikipediaImage(scientificName);
+  // Fall back to Wikimedia Commons with scientific name
+  const wikiScientific = await fetchWikimediaImage(scientificName);
   if (wikiScientific) return wikiScientific;
 
-  // Try Wikipedia with common name (tries with and without cultivar)
-  const wikiCommon = await fetchWikipediaImage(commonName);
+  // Try Wikimedia Commons with common name
+  const wikiCommon = await fetchWikimediaImage(commonName);
   if (wikiCommon) return wikiCommon;
 
   return null;

@@ -124,26 +124,17 @@ function PlantCardLoaded({ result, entry }: PlantCardLoadedProps) {
       <div className="px-5 pb-3 text-xs text-gray-400 flex justify-between">
         <span>
           {imageAttribution && (
-            imageAttribution.source === "ala" ? (
-              <>
-                {imageAttribution.photographerName && (
-                  <>Photo by {imageAttribution.photographerName} on{" "}</>
-                )}
-                <a href={imageAttribution.sourceUrl} className="underline" target="_blank" rel="noopener noreferrer">
-                  Atlas of Living Australia
-                </a>
-                {imageAttribution.license && (
-                  <> ({imageAttribution.license})</>
-                )}
-              </>
-            ) : (
-              <>
-                Image from{" "}
-                <a href={imageAttribution.sourceUrl} className="underline" target="_blank" rel="noopener noreferrer">
-                  Wikipedia
-                </a>
-              </>
-            )
+            <>
+              {imageAttribution.photographerName && (
+                <>{imageAttribution.photographerName} · </>
+              )}
+              <a href={imageAttribution.sourceUrl} className="underline" target="_blank" rel="noopener noreferrer">
+                {imageAttribution.source === "inaturalist" ? "iNaturalist" : "Wikimedia Commons"}
+              </a>
+              {imageAttribution.license && (
+                <> ({imageAttribution.license})</>
+              )}
+            </>
           )}
         </span>
         <a
