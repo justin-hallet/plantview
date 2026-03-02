@@ -6,10 +6,7 @@ const OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions";
 const UNSPLASH_URL = "https://api.unsplash.com/search/photos";
 const WIKIPEDIA_API_URL = "https://en.wikipedia.org/api/rest_v1/page/summary";
 
-export async function fetchPlantData(query: string): Promise<PlantData> {
-  const apiKey = import.meta.env.VITE_OPENROUTER_API_KEY;
-  if (!apiKey) throw new Error("Missing VITE_OPENROUTER_API_KEY environment variable");
-
+export async function fetchPlantData(query: string, apiKey: string): Promise<PlantData> {
   const response = await fetch(OPENROUTER_URL, {
     method: "POST",
     headers: {
@@ -124,10 +121,7 @@ export async function fetchPlantImage(
   return null;
 }
 
-export async function extractPlantsFromText(documentText: string): Promise<PlantEntry[]> {
-  const apiKey = import.meta.env.VITE_OPENROUTER_API_KEY;
-  if (!apiKey) throw new Error("Missing VITE_OPENROUTER_API_KEY environment variable");
-
+export async function extractPlantsFromText(documentText: string, apiKey: string): Promise<PlantEntry[]> {
   const response = await fetch(OPENROUTER_URL, {
     method: "POST",
     headers: {
@@ -154,11 +148,11 @@ export async function extractPlantsFromText(documentText: string): Promise<Plant
   return JSON.parse(jsonStr) as PlantEntry[];
 }
 
-export async function lookupPlant(query: string): Promise<PlantResult> {
+export async function lookupPlant(query: string, apiKey: string): Promise<PlantResult> {
   const cached = await getCachedResult(query);
   if (cached) return cached;
 
-  const plant = await fetchPlantData(query);
+  const plant = await fetchPlantData(query, apiKey);
   const image = await fetchPlantImage(plant.common_name, plant.scientific_name);
 
   const result: PlantResult = {
@@ -173,6 +167,7 @@ export async function lookupPlant(query: string): Promise<PlantResult> {
 
 export async function lookupPlantBatch(
   entries: PlantEntry[],
+  apiKey: string,
   onResult: (index: number, result: PlantResult) => void,
   onError: (index: number, error: string) => void
 ): Promise<void> {
@@ -203,7 +198,7 @@ export async function lookupPlantBatch(
       const current = next++;
       const { index, query } = uncached[current];
       try {
-        const result = await lookupPlant(query);
+        const result = await lookupPlant(query, apiKey);
         onResult(index, result);
       } catch (err) {
         onError(index, err instanceof Error ? err.message : "Lookup failed");
