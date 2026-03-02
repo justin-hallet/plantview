@@ -19,10 +19,11 @@ export interface PlantData {
 }
 
 export interface ImageAttribution {
-  source: "unsplash" | "wikipedia";
+  source: "ala" | "wikipedia";
   photographerName?: string;
   photographerUrl?: string;
   sourceUrl: string;
+  license?: string;
 }
 
 export interface PlantResult {
