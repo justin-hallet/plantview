@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm install:*)",
+      "Bash(timeout 15 npx vite:*)",
+      "Bash(npx vite:*)",
+      "Bash(npm:*)",
+      "Bash(npx tailwindcss:*)",
+      "Bash(pkill:*)",
+      "Bash(npx tsc:*)",
+      "Bash(curl:*)",
+      "Bash(python3:*)"
+    ]
+  }
+}
