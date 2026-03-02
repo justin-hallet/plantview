@@ -5,7 +5,7 @@ import { getCachedResult, setCachedResult, batchGetCached } from "./cache";
 const OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions";
 const WIKIPEDIA_API_URL = "https://en.wikipedia.org/api/rest_v1/page/summary";
 const ALA_SPECIES_SEARCH_URL = "https://api.ala.org.au/species/search";
-const ALA_IMAGE_DETAILS_URL = "https://images.ala.org.au/ws/image/details";
+const ALA_IMAGE_URL = "https://images.ala.org.au/ws/image";
 
 export async function fetchPlantData(query: string, apiKey: string): Promise<PlantData> {
   const response = await fetch(OPENROUTER_URL, {
@@ -96,7 +96,7 @@ async function fetchAlaImage(
       let license: string | undefined;
       try {
         const detailsResponse = await fetch(
-          `${ALA_IMAGE_DETAILS_URL}?id=${result.image}`
+          `${ALA_IMAGE_URL}/${result.image}`
         );
         if (detailsResponse.ok) {
           const details = await detailsResponse.json();
